@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Blackjack Count Strategy Simulator</title>
+<style>
+:root{--bg:#0e1116;--panel:#171c24;--panel2:#202733;--text:#edf2f7;--muted:#9aa7b5;--line:#303946;--good:#58d68d;--bad:#ff7b7b;--accent:#66a3ff;--gold:#f4c95d}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+header{padding:26px 28px 18px;border-bottom:1px solid var(--line);background:#11161d;position:sticky;top:0;z-index:5}
+h1{margin:0 0 7px;font-size:25px} .sub{color:var(--muted);font-size:14px;max-width:950px}.wrap{max-width:1450px;margin:auto;padding:22px}
+.grid{display:grid;grid-template-columns:420px 1fr;gap:18px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:17px;margin-bottom:16px}.panel h2{font-size:16px;margin:0 0 13px}.panel h3{font-size:14px;margin:16px 0 8px;color:#cbd6e2}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{margin:8px 0}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}input,select,textarea,button{font:inherit}input,select,textarea{width:100%;background:#0f141b;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:8px}textarea{min-height:115px;resize:vertical}
+.tags{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.tag label{text-align:center;font-size:11px;color:var(--muted);display:block}.tag input{text-align:center;padding:7px 4px}.note{font-size:12px;color:var(--muted);line-height:1.45}.btns{display:flex;gap:9px;flex-wrap:wrap}.btn{border:0;border-radius:8px;padding:10px 15px;font-weight:650;cursor:pointer;background:var(--accent);color:#06111f}.btn.secondary{background:#2a3442;color:var(--text)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px}.stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:13px}.stat b{font-size:22px;display:block;margin-top:5px}.stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}.strategy{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px}.strategy h3{margin:0 0 10px}.metric{display:flex;justify-content:space-between;border-top:1px solid #303946;padding:8px 0;font-size:13px}.metric:first-of-type{border-top:0}.positive{color:var(--good)}.negative{color:var(--bad)}
+canvas{width:100%;height:250px;background:#10151c;border-radius:8px;border:1px solid var(--line)}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px 7px;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}th{color:var(--muted);font-weight:600}.scroll{overflow:auto;max-height:360px}.pill{display:inline-block;padding:3px 7px;border-radius:999px;background:#273444;color:#cfe0f5;font-size:11px}.warn{color:var(--gold)}
+@media(max-width:980px){.grid{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}.compare{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>Blackjack Count Strategy Simulator</h1><div class="sub">Six-deck shoe simulation with deep penetration, configurable count tags and index deviations, a 15-unit starting bankroll, +3 bet ramp, and side-by-side Hi-Lo benchmarking.</div></header>
+<div class="wrap"><div class="grid">
+<aside>
+<div class="panel"><h2>Game & simulation</h2>
+<div class="row"><div class="field"><label>Table minimum ($)</label><input id="minBet" type="number" min="1" value="25"></div><div class="field"><label>Hands per comparison</label><input id="hands" type="number" min="100" max="1000000" step="1000" value="50000"></div></div>
+<div class="row"><div class="field"><label>Shoe penetration</label><select id="penetration"><option value="0.75">75% (4.5 decks)</option><option value="0.80">80% (4.8 decks)</option><option value="0.8333">83.3% (5 decks)</option><option value="0.875" selected>87.5% (5.25 decks)</option><option value="0.90">90% (5.4 decks)</option></select></div><div class="field"><label>Dealer rule</label><select id="soft17"><option value="H17" selected>Hits soft 17</option><option value="S17">Stands soft 17</option></select></div></div>
+<div class="row"><div class="field"><label>Blackjack payout</label><select id="bjPay"><option value="1.5" selected>3:2</option><option value="1.2">6:5</option></select></div><div class="field"><label>Double after split</label><select id="das"><option value="yes" selected>Allowed</option><option value="no">Not allowed</option></select></div></div>
+<div class="row"><div class="field"><label>Max split hands</label><select id="maxSplit"><option>2</option><option selected>4</option></select></div><div class="field"><label>Simultaneous players</label><select id="players"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select></div></div>
+<div class="note">Starting bankroll is fixed at <b>15 × table minimum</b>. The counter bets 1 unit below +3 and 2 units at +3 or higher. You can choose whether that trigger uses running count or true count.</div>
+<div class="field"><label>Bet trigger count</label><select id="betCount"><option value="true" selected>True count ≥ +3</option><option value="running">Running count ≥ +3</option></select></div>
+</div>
+
+<div class="panel"><h2>Your Counting System</h2><div class="note">Enter the counting tag for each card rank. These values define your modified count. The defaults shown are standard Hi-Lo.</div>
+<div class="field"><label>Count preset</label><select id="countPreset"><option value="hilo" selected>Hi-Lo</option><option value="rapc">Revere RAPC</option><option value="custom">Custom</option></select></div>
+<div class="tags" id="tags">
+<div class="tag"><label>A</label><input id="tagA" data-rank="A" type="number" step="1" value="-1"></div>
+<div class="tag"><label>2</label><input id="tag2" data-rank="2" type="number" step="1" value="1"></div>
+<div class="tag"><label>3</label><input id="tag3" data-rank="3" type="number" step="1" value="1"></div>
+<div class="tag"><label>4</label><input id="tag4" data-rank="4" type="number" step="1" value="1"></div>
+<div class="tag"><label>5</label><input id="tag5" data-rank="5" type="number" step="1" value="1"></div>
+<div class="tag"><label>6</label><input id="tag6" data-rank="6" type="number" step="1" value="1"></div>
+<div class="tag"><label>7</label><input id="tag7" data-rank="7" type="number" step="1" value="0"></div>
+<div class="tag"><label>8</label><input id="tag8" data-rank="8" type="number" step="1" value="0"></div>
+<div class="tag"><label>9</label><input id="tag9" data-rank="9" type="number" step="1" value="0"></div>
+<div class="tag"><label>10/J/Q/K</label><input id="tag10" data-rank="10" type="number" step="1" value="-1"></div>
+</div>
+<h3>True Count Calculation</h3>
+<div class="field"><label>True-count rounding</label><select id="tcRound"><option value="truncate" selected>Truncate toward zero</option><option value="floor">Floor</option><option value="round">Round nearest</option><option value="raw">Use unrounded</option></select></div>
+</div>
+
+<div class="panel"><h2>Basic-strategy deviations</h2><div class="note">One rule per line: <code>16,10,S,&gt;=,0</code>. Format: <b>player hand, dealer upcard, action, comparator, count</b>. Actions: H, S, D, P. Hand examples: 16, 12, A7, 99. Dealer: 2–10 or A.</div>
+<textarea id="deviations" placeholder="16,10,S,>=,0\n15,10,S,>=,4\n10,10,D,>=,4\n12,3,S,>=,2"></textarea>
+<div class="field"><label>Deviation count source</label><select id="devCount"><option value="true" selected>True count</option><option value="running">Running count</option></select></div>
+</div>
+<div class="panel"><div class="btns"><button class="btn" id="run">Run comparison</button><button class="btn secondary" id="preset">Load common Hi-Lo indices</button><button class="btn secondary" id="reset">Reset modified count</button></div><p id="status" class="note"></p></div>
+</aside>
+
+<main>
+<div class="panel"><h2>Simulation summary</h2><div class="cards"><div class="stat"><span>Starting bankroll</span><b id="startBank">$375</b></div><div class="stat"><span>Bet spread</span><b>1–2 units</b></div><div class="stat"><span>Shoe</span><b>6 decks</b></div><div class="stat"><span>Penetration</span><b id="penText">87.5%</b></div></div></div>
+<div class="panel"><h2>Modified strategy vs Hi-Lo</h2><div class="compare"><div class="strategy"><h3>Your modified strategy</h3><div id="modMetrics"></div></div><div class="strategy"><h3>Standard Hi-Lo benchmark <span class="pill">fixed reference indices</span></h3><div id="hiloMetrics"></div></div></div></div>
+<div class="panel"><h2>Bankroll path</h2><canvas id="chart" width="900" height="250"></canvas><div class="note">Paths are sampled during the run. Each strategy receives its own independently shuffled six-deck shoes using identical game rules. The Hi-Lo reference uses standard Hi-Lo tags and a fixed set of common index deviations.</div></div>
+<div class="panel"><h2>Count & betting diagnostics</h2><div class="cards"><div class="stat"><span>Modified avg true count</span><b id="avgTc">—</b></div><div class="stat"><span>Modified max true count</span><b id="maxTc">—</b></div><div class="stat"><span>2-unit bets</span><b id="twoBets">—</b></div><div class="stat"><span>Shoes used</span><b id="shoesUsed">—</b></div></div></div>
+<div class="panel"><h2>Run history</h2><div class="scroll"><table><thead><tr><th>Run</th><th>Hands</th><th>Modified P/L</th><th>Hi-Lo P/L</th><th>Modified ROI</th><th>Hi-Lo ROI</th><th>Difference</th></tr></thead><tbody id="history"></tbody></table></div></div>
+<div class="panel"><h2>Important simulation notes</h2><div class="note">This is a strategy-comparison simulator, not a guarantee of casino results. It models a finite shoe and card removal, but it does not model every casino-specific rule, heat, mistakes, side bets, wonging, shuffle tracking, variable penetration, dealer procedural differences, or real-world bankroll constraints beyond stopping when the bankroll can no longer fund the next wager.</div></div>
+</main></div></div>
+<script>
+
+const COUNT_PRESETS = {
+  hilo: {A:-1,2:1,3:1,4:1,5:1,6:1,7:0,8:0,9:0,10:-1},
+  rapc: {A:-4,2:2,3:3,4:3,5:4,6:3,7:2,8:0,9:-1,10:-3}
+};
+function setCountTags(tags){
+  for (const [rank,val] of Object.entries(tags)) {
+    const el=document.querySelector(`[data-rank="${rank}"]`);
+    if(el) el.value=val;
+  }
+}
+document.getElementById('countPreset').addEventListener('change', e=>{
+  if(COUNT_PRESETS[e.target.value]) setCountTags(COUNT_PRESETS[e.target.value]);
+});
+document.querySelectorAll('[data-rank]').forEach(el=>el.addEventListener('input',()=>{
+  document.getElementById('countPreset').value='custom';
+}));
+const ranks=['A','2','3','4','5','6','7','8','9','10'];
+const hilo={A:-1,2:1,3:1,4:1,5:1,6:1,7:0,8:0,9:0,10:-1};
+const standardHiloIndices=`16,10,S,>=,0
+15,10,S,>=,4
+10,10,D,>=,4
+10,A,D,>=,4
+9,2,D,>=,1
+9,7,D,>=,3
+12,2,S,>=,3
+12,3,S,>=,2
+12,4,H,<,0
+12,5,H,<,-2
+12,6,H,<,-1
+13,2,H,<,-1
+13,3,H,<,-2`;
+
+const $=id=>document.getElementById(id);
+$('minBet').addEventListener('input',()=>{$('startBank').textContent='$'+(15*(+$('minBet').value||0)).toLocaleString()});
+$('penetration').addEventListener('change',()=>$('penText').textContent=(+$('penetration').value*100).toFixed(1)+'%');
+$('reset').onclick=()=>{document.getElementById('countPreset').value='hilo'; setCountTags(hilo);};
+$('preset').onclick=()=>{$('deviations').value=standardHiloIndices;};
+
+function makeShoe(){let a=[];for(let d=0;d<6;d++)for(const r of ranks){let n=r==='10'?16:4;for(let i=0;i<n;i++)a.push(r)}for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function value(cards){let total=0,aces=0;for(const c of cards){if(c==='A'){total+=11;aces++}else total+=c==='10'?10:+c}while(total>21&&aces){total-=10;aces--}return {total,soft:aces>0}}
+function handKey(cards){if(cards.length===2){if(cards[0]===cards[1]) return cards[0]+cards[1]; let v=value(cards); if(cards.includes('A')&&v.total<=21){let other=cards[0]==='A'?cards[1]:cards[0]; return 'A'+(other==='10'?10:other)}}return String(value(cards).total)}
+function dealerVal(r){return r==='A'?11:r==='10'?10:+r}
+function pairRank(cards){return cards.length===2&&cards[0]===cards[1]?cards[0]:null}
+function basic(cards,up,canDouble=true,canSplit=true){let v=value(cards),u=dealerVal(up),p=pairRank(cards);
+ if(canSplit&&p){if(p==='A'||p==='8')return'P';if(p==='10')return'S';if(p==='9')return [2,3,4,5,6,8,9].includes(u)?'P':'S';if(p==='7')return u<=7?'P':'H';if(p==='6')return u<=6?'P':'H';if(p==='5')return (u>=2&&u<=9&&canDouble)?'D':'H';if(p==='4')return (u===5||u===6)?'P':'H';if(p==='3'||p==='2')return u<=7?'P':'H'}
+ if(v.soft&&cards.includes('A')){let t=v.total;if(t>=19)return'S';if(t===18){if(u>=3&&u<=6&&canDouble)return'D';return [2,7,8].includes(u)?'S':'H'}if(t===17)return (u>=3&&u<=6&&canDouble)?'D':'H';if(t===16||t===15)return (u>=4&&u<=6&&canDouble)?'D':'H';if(t===14||t===13)return (u>=5&&u<=6&&canDouble)?'D':'H'}
+ let t=v.total;if(t>=17)return'S';if(t>=13)return u<=6?'S':'H';if(t===12)return (u>=4&&u<=6)?'S':'H';if(t===11)return canDouble?'D':'H';if(t===10)return (u<=9&&canDouble)?'D':'H';if(t===9)return (u>=3&&u<=6&&canDouble)?'D':'H';return'H'}
+function parseDevs(txt){let out=[];for(const raw of txt.split(/\n+/)){let s=raw.trim();if(!s)continue;let [hand,dealer,action,comp,num]=s.split(',').map(x=>x.trim());if(!hand||!dealer||!action||!comp||isNaN(+num))continue;out.push({hand:hand.toUpperCase(),dealer:dealer.toUpperCase(),action:action.toUpperCase(),comp,n:+num})}return out}
+function cmp(x,op,n){return op==='>='?x>=n:op==='>'?x>n:op==='<='?x<=n:op==='<'?x<n:op==='='||op==='=='?x===n:false}
+function tcAdjust(raw,mode){if(mode==='truncate')return raw<0?Math.ceil(raw):Math.floor(raw);if(mode==='floor')return Math.floor(raw);if(mode==='round')return Math.round(raw);return raw}
+function actionWithDev(cards,up,base,devs,count){let key=handKey(cards);for(const d of devs){if(d.hand===key&&d.dealer===up&&cmp(count,d.comp,d.n))return d.action}return base}
+
+function simulate(cfg,tags,devs,isBenchmark=false){let bankroll=cfg.start, start=bankroll, shoe=[],pos=0,cut=0,rc=0,shoes=0;let wins=0,loss=0,push=0,bj=0,totalBet=0,two=0,maxTC=-Infinity,sumTC=0,tcN=0,paths=[bankroll];
+ const reshuffle=()=>{shoe=makeShoe();pos=0;cut=Math.floor(shoe.length*cfg.pen);rc=0;shoes++};reshuffle();
+ const draw=()=>{let c=shoe[pos++];rc+=tags[c];return c};
+ const countNow=()=>{let decks=Math.max((shoe.length-pos)/52,0.25);let raw=rc/decks;let tc=tcAdjust(raw,cfg.round);return {rc,tc,raw}};
+ for(let h=0;h<cfg.hands;h++){
+   if(pos>=cut||shoe.length-pos<60)reshuffle();
+   let c0=countNow();sumTC+=c0.tc;tcN++;maxTC=Math.max(maxTC,c0.tc);let trigger=(cfg.betCount==='running'?c0.rc:c0.tc)>=3;let units=trigger?2:1;if(units===2)two++;
+   let wager=cfg.min*units;if(bankroll<wager)break;totalBet+=wager;
+   // Consume cards for other players before dealer/player round to model table card depletion.
+   for(let p=1;p<cfg.players;p++){draw();draw();}
+   let player=[draw(),draw()],dealer=[draw(),draw()],up=dealer[0];
+   let pv=value(player),dv=value(dealer);let pBJ=player.length===2&&pv.total===21,dBJ=dealer.length===2&&dv.total===21;
+   if(pBJ||dBJ){if(pBJ&&dBJ){push++}else if(pBJ){let gain=wager*cfg.bj;bankroll+=gain;wins++;bj++}else{bankroll-=wager;loss++} if(h%Math.max(1,Math.floor(cfg.hands/300))===0)paths.push(bankroll);continue}
+   let hands=[{cards:player,bet:wager,split:false,aceSplit:false}],results=[];
+   for(let hi=0;hi<hands.length;hi++){
+     let ph=hands[hi],done=false;while(!done){let val=value(ph.cards);if(val.total>=21)break;let canD=ph.cards.length===2&&(!ph.split||cfg.das);let canP=ph.cards.length===2&&hands.length<cfg.maxSplit&&!ph.aceSplit;let act=basic(ph.cards,up,canD,canP);
+       let cn=countNow();let dcount=cfg.devCount==='running'?cn.rc:cn.tc;act=actionWithDev(ph.cards,up,act,devs,dcount);
+       if(act==='P'&&canP&&pairRank(ph.cards)){let r=ph.cards[0],c1=draw(),c2=draw();ph.cards=[r,c1];ph.split=true;ph.aceSplit=r==='A';hands.splice(hi+1,0,{cards:[r,c2],bet:ph.bet,split:true,aceSplit:r==='A'});if(r==='A')done=true;continue}
+       if(act==='D'&&canD&&bankroll>=ph.bet){ph.bet*=2;totalBet+=ph.bet/2;ph.cards.push(draw());done=true;continue}
+       if(act==='S'){done=true;continue}ph.cards.push(draw());
+     }results.push(ph)}
+   // Dealer plays once unless all busted
+   if(results.some(x=>value(x.cards).total<=21)){while(true){let d=value(dealer);if(d.total<17||(d.total===17&&d.soft&&cfg.soft17==='H17'))dealer.push(draw());else break}}
+   let dt=value(dealer).total;
+   for(const ph of results){let pt=value(ph.cards).total;if(pt>21){bankroll-=ph.bet;loss++}else if(dt>21||pt>dt){bankroll+=ph.bet;wins++}else if(pt<dt){bankroll-=ph.bet;loss++}else push++}
+   if(h%Math.max(1,Math.floor(cfg.hands/300))===0)paths.push(bankroll);
+ }
+ return {start,end:bankroll,profit:bankroll-start,totalBet,wins,loss,push,bj,two,shoes,avgTC:sumTC/Math.max(1,tcN),maxTC,paths,hands:wins+loss+push,roi:totalBet?100*(bankroll-start)/totalBet:0,winRate:(wins+loss)?100*wins/(wins+loss):0};
+}
+function fmt(n){return (n<0?'−$':'$')+Math.abs(n).toLocaleString(undefined,{maximumFractionDigits:2})}
+function metricHtml(r){let cls=r.profit>=0?'positive':'negative';return `<div class="metric"><span>Ending bankroll</span><b>${fmt(r.end)}</b></div><div class="metric"><span>Profit / loss</span><b class="${cls}">${fmt(r.profit)}</b></div><div class="metric"><span>ROI on amount wagered</span><b class="${r.roi>=0?'positive':'negative'}">${r.roi.toFixed(2)}%</b></div><div class="metric"><span>Hands completed</span><b>${r.hands.toLocaleString()}</b></div><div class="metric"><span>Wins / losses / pushes</span><b>${r.wins.toLocaleString()} / ${r.loss.toLocaleString()} / ${r.push.toLocaleString()}</b></div><div class="metric"><span>Blackjacks</span><b>${r.bj.toLocaleString()}</b></div><div class="metric"><span>Total amount wagered</span><b>${fmt(r.totalBet)}</b></div>`}
+function chart(a,b){let c=$('chart'),x=c.getContext('2d'),W=c.width,H=c.height;x.clearRect(0,0,W,H);let vals=[...a,...b],min=Math.min(...vals),max=Math.max(...vals);if(max===min){max++;min--}let pad=30;x.strokeStyle='#384454';x.beginPath();x.moveTo(pad,H-pad);x.lineTo(W-pad,H-pad);x.stroke();function line(arr,color){x.strokeStyle=color;x.lineWidth=2;x.beginPath();arr.forEach((v,i)=>{let px=pad+i*(W-2*pad)/Math.max(1,arr.length-1),py=pad+(max-v)*(H-2*pad)/(max-min);i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke()}line(a,'#66a3ff');line(b,'#f4c95d');x.fillStyle='#66a3ff';x.fillText('Modified',pad,15);x.fillStyle='#f4c95d';x.fillText('Hi-Lo',pad+75,15)}
+let runNo=0;
+$('run').onclick=()=>{let btn=$('run');btn.disabled=true;$('status').textContent='Running simulation…';setTimeout(()=>{try{let min=+$('minBet').value||25;let cfg={min,hands:Math.min(1000000,Math.max(100,+$('hands').value||50000)),pen:+$('penetration').value,soft17:$('soft17').value,bj:+$('bjPay').value,das:$('das').value==='yes',maxSplit:+$('maxSplit').value,players:+$('players').value,start:15*min,betCount:$('betCount').value,round:$('tcRound').value,devCount:$('devCount').value};let custom={};for(const r of ranks){const el=document.querySelector(`[data-rank=\"${r}\"]`);custom[r]=+(el?el.value:0)||0;}let devs=parseDevs($('deviations').value);let mod=simulate(cfg,custom,devs,false);let benchCfg={...cfg,round:'truncate',devCount:'true'};let hiDevs=parseDevs(standardHiloIndices);
+let hi=simulate(benchCfg,hilo,hiDevs,true);$('modMetrics').innerHTML=metricHtml(mod);$('hiloMetrics').innerHTML=metricHtml(hi);$('avgTc').textContent=mod.avgTC.toFixed(2);$('maxTc').textContent=isFinite(mod.maxTC)?mod.maxTC.toFixed(2):'—';$('twoBets').textContent=mod.two.toLocaleString();$('shoesUsed').textContent=mod.shoes.toLocaleString();chart(mod.paths,hi.paths);runNo++;let tr=document.createElement('tr');tr.innerHTML=`<td>${runNo}</td><td>${cfg.hands.toLocaleString()}</td><td class="${mod.profit>=0?'positive':'negative'}">${fmt(mod.profit)}</td><td class="${hi.profit>=0?'positive':'negative'}">${fmt(hi.profit)}</td><td>${mod.roi.toFixed(2)}%</td><td>${hi.roi.toFixed(2)}%</td><td>${fmt(mod.profit-hi.profit)}</td>`;$('history').prepend(tr);$('status').innerHTML=`Completed. Modified count used <b>${devs.length}</b> deviation rule(s).`; }catch(e){console.error(e);$('status').textContent='Error: '+e.message}finally{btn.disabled=false}},25)};
+$('startBank').textContent='$'+(15*+$('minBet').value).toLocaleString();
+
+</script>
+</body></html>
